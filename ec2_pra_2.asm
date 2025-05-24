@@ -237,16 +237,6 @@ got_key:
 
 
 
-casella_ocupada:
-    ; Pintar missatge "COL. PLENA"
-    MOVH    R0, BYTEALTO PANTALLA
-    MOVL    R0, BYTEBAJO PANTALLA
-    MOVH    R2, 00h
-    MOVL    R2, 10h
-    ADD     R0, R0, R2
-    MOVH    R1, BYTEALTO DIRECCION casella_ocupada_txt
-    MOVL    R1, BYTEBAJO DIRECCION casella_ocupada_txt
-    CALL    print_string
 
 
 
@@ -254,8 +244,9 @@ tornJug1:
     PUSH    R0
     PUSH    R1
     PUSH    R2
-
-    ; pinta prompt
+    MOVL    R0, 0           ; inicialitza R0 a 0 des del principi
+    
+    ; pinta prompt "Torn del jugador 1"
     MOVH    R0, BYTEALTO PANTALLA
     MOVL    R0, BYTEBAJO PANTALLA
     MOVH    R2, 00h
@@ -275,7 +266,7 @@ tornJug1:
     MOVL    R1, BYTEBAJO DIRECCION selectColumn
     CALL    print_string
     CALL    read_teclat       ; retorna ASCII a R2
-    MOV     R5, R2           ; columna ASCII
+    MOV     R5, R2            ; columna ASCII
 
     ; demana fila
     MOVH    R0, BYTEALTO PANTALLA
@@ -287,75 +278,89 @@ tornJug1:
     MOVL    R1, BYTEBAJO DIRECCION selectFila
     CALL    print_string
     CALL    read_teclat       ; retorna ASCII a R2
-    MOV     R4, R2           ; fila ASCII
-
-    ; comprovar si la columna i fila són vàlides, estan ocupades o no 
+    MOV     R4, R2            ; fila ASCII
 
 
-;fila1       VALOR   0, 0, 0
-;fila2       VALOR   0, 0, 0
-;fila3       VALOR   0, 0, 0
-
-        MOVH  R1, 00h
-        MOVL   R1, '0'            ; R1 ← ASCII '0' (48)
-        SUB    R4, R4, R1             ; R4 ← R4 - '0', ara és 1,2 o 3
-
-        MOVH  R1, 00h
-        MOVL   R1, '0'  
-        SUB    R5, R5, R1             ; R5 ← R5 - '0', ara és 0,1 o 2
-
-        MOVL  R1, 1                 ; R1 ← 1
-        COMP  R4, R1                ; compara R4 amb 1 :contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
-        BRZ   base_fila1            ; si R4=1, salta a base_fila1
-        MOVL  R1, 2                 ; R1 ← 2
+        MOVL  R1, '1'                 ; R1 ← 1
+        COMP  R4, R1                ; compara R4 amb 1
+        BRNZ   p1_base_fila1            ; si R4=1, salta a p1_base_fila1
+        MOVL  R1, '2'                 ; R1 ← 2
         COMP  R4, R1                ; compara R4 amb 2
-        BRZ   base_fila2            ; si R4=2, salta a base_fila2
-
-base_fila3:
+        BRNZ   p1_base_fila2            ; si R4=2, salta a p1_base_fila2
+p1_base_fila3:
         MOVH  R6, BYTEALTO DIRECCION fila3
         MOVL  R6, BYTEBAJO DIRECCION fila3
-        JMP   after_base
-base_fila1:
+        JMP   after_p1_base
+p1_base_fila1:
         MOVH  R6, BYTEALTO DIRECCION fila1
         MOVL  R6, BYTEBAJO DIRECCION fila1
-        JMP   after_base
-base_fila2:
+
+        JMP   after_p1_base
+p1_base_fila2:
         MOVH  R6, BYTEALTO DIRECCION fila2
         MOVL  R6, BYTEBAJO DIRECCION fila2
-after_base:
-
-        ; -------- 2) Desplaçament fins a la columna --------
-        MOV   R2, R5                ; R2 ← número de columna
-        DEC   R2                    ; R2 ← R2 - 1 (0..2) :contentReference[oaicite:4]{index=4}:contentReference[oaicite:5]{index=5}
-col_loop:
-        COMP  R2, R0                ; compara R2 amb 0
-        BRZ   col_done              ; si R2=0, hem avançat prou
-        INC   R6                    ; R6 = R6 + 1 (punter a la següent cel·la) :contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}
-        DEC   R2                    ; R2 = R2 - 1
-        BRNZ  col_loop              ; repeteix mentre R2 ≠ 0
-col_done:
-
-        ; -------- 3) Comprovació i escriptura de la X --------
-        MOV   R3, [R6]              ; R3 ← contingut actual de la cel·la :contentReference[oaicite:8]{index=8}:contentReference[oaicite:9]{index=9}
-        COMP  R3, R0                ; compara amb 0
-        BRZ  casella_ocupada         ; si no és zero, ja està ocupada
-
-        MOVL  R1, 1               ; R1 ← codi ASCII de 'X' (o un valor 1 si ho prefereixes)
-        MOV   [R6], R1              ; escriu la 'X' a memòria :contentReference[oaicite:10]{index=10}:contentReference[oaicite:11]{index=11}
         
-  
-        ; -------- 4) Pintar la X a pantalla --------
-        call   pintar_x
+after_p1_base:
+        ; -------- 2) Desplaçament fins a la columna --------
+    ; ---- 2) Desplaçament fins a la columna (version millorada) ----
 
-        call tornJug2
+    ; suposem que R5 conté l’ASCII de la columna ('1'..'3')
+    MOV    R2, R5        ; R2 ← ASCII de columna
+    MOVH   R1, 00h
+    MOVL   R1, 30h       ; R1 ← 0x30
+    SUB    R2, R2, R1    ; R2 ← R2 - R1 = columna_num (1..3)
+    DEC    R2            ; R2 = columna_num - 1 (0..2)
 
-    POP     R1
-    POP     R2
-    POP     R0
+   ; ara R2 = columna-1 (0..2)
+    col_loop_p1:
+
+        BRZ   col_done_p1  ; si R2==0 hem avançat prou
+        INC   R6           ; passem a la següent cel·la
+        DEC   R2           ; R2--
+        BRNZ  col_loop_p1  ; mentre R2≠0 seguim
+    col_done_p1:
+
+        ; -------- 3) Comprovació i escriptura d'un 1 ja que es el jugador 1 qui ha marcat -------
+    ; -------- 3) COMPROVACIÓ I ESCRIPTURA DE LA MARCA --------
+    
+        ; 3.1) Carregar 0 a R1
+        MOVL   R1, 0          ; ara R1 = 0
+
+        ; 3.2) Llegir contingut de la casella
+        MOV    R3, [R6]       ; R3 = valor memòria
+
+        ; 3.3) Comparar amb 0
+        COMP   R3, R1         ; R3–R1
+        BRNZ   casella_ocupada ; si R3≠0 → ocupada
+
+        ; 3.4) Si som aquí, la casella està lliure
+        MOVL   R1, 1          ; R1 = 1
+        MOV    [R6], R1       ; escrivim la marca del jugador
+
+        CALL   pintar_x
+        CALL   tornJug2       ; passem al següent torn
+
+
+
+
+casella_ocupada:
+    ; Pintar missatge "COL. PLENA"
+    MOVH    R0, BYTEALTO PANTALLA
+    MOVL    R0, BYTEBAJO PANTALLA
+    MOVH    R2, 00h
+    MOVL    R2, 10h
+    ADD     R0, R0, R2
+    MOVH    R1, BYTEALTO DIRECCION casella_ocupada_txt
+    MOVL    R1, BYTEBAJO DIRECCION casella_ocupada_txt
+    CALL    print_string
+
+
+
+    POP R1
+    POP R2
+    POP R0
+    JMP    tornJug1  
     RET
-
-
-
 
          ; ----------------------------------------
          ; Funció: pintar_x
@@ -403,7 +408,9 @@ pintar_x:
         POP     R1
         POP     R0
         RET
-
+torn_jug1_tramp:
+; Torn del jugador 1
+call   tornJug1
 ; ----------------------------------------
 ; Multiplicació per suma repetida:
 ;   Arguments: R1 = multiplicand, R2 = copes
@@ -467,6 +474,114 @@ fi_o:
 
 
 
+
+
+
+
+tornJug2:
+    PUSH    R0
+    PUSH    R1
+    PUSH    R2
+
+    ; pinta prompt
+    MOVH    R0, BYTEALTO PANTALLA
+    MOVL    R0, BYTEBAJO PANTALLA
+    MOVH    R2, 00h
+    MOVL    R2, 00h
+    ADD     R0, R0, R2
+    MOVH    R1, BYTEALTO DIRECCION tornJugador2
+    MOVL    R1, BYTEBAJO DIRECCION tornJugador2
+    CALL    print_string2
+
+    ; demana columna
+    MOVH    R0, BYTEALTO PANTALLA
+    MOVL    R0, BYTEBAJO PANTALLA
+    MOVH    R2, 00h
+    MOVL    R2, 10h
+    ADD     R0, R0, R2
+    MOVH    R1, BYTEALTO DIRECCION selectColumn
+    MOVL    R1, BYTEBAJO DIRECCION selectColumn
+    CALL    print_string2
+    CALL    read_teclat2       ; retorna ASCII a R2
+    MOV     R5, R2           ; columna ASCII
+
+    ; demana fila
+    MOVH    R0, BYTEALTO PANTALLA
+    MOVL    R0, BYTEBAJO PANTALLA
+    MOVH    R2, 00h
+    MOVL    R2, 10h
+    ADD     R0, R0, R2
+    MOVH    R1, BYTEALTO DIRECCION selectFila
+    MOVL    R1, BYTEBAJO DIRECCION selectFila
+    CALL    print_string2
+    CALL    read_teclat2       ; retorna ASCII a R2
+    MOV     R4, R2           ; fila ASCII
+
+
+        MOVL  R1, '1'                 ; R1 ← 1
+        COMP  R4, R1                ; compara R4 amb 1
+        BRZ   P2_base_fila1            ; si R4=1, salta a P2_base_fila1
+        MOVL  R1, '2'                 ; R1 ← 2
+        COMP  R4, R1                ; compara R4 amb 2
+        BRZ   P2_base_fila2            ; si R4=2, salta a P2_base_fila2
+P2_base_fila3:
+        MOVH  R6, BYTEALTO DIRECCION fila3
+        MOVL  R6, BYTEBAJO DIRECCION fila3
+        JMP   after_P2_base
+P2_base_fila1:
+        MOVH  R6, BYTEALTO DIRECCION fila1
+        MOVL  R6, BYTEBAJO DIRECCION fila1
+
+        JMP   after_P2_base
+P2_base_fila2:
+        MOVH  R6, BYTEALTO DIRECCION fila2
+        MOVL  R6, BYTEBAJO DIRECCION fila2
+        
+after_P2_base:
+        ; -------- 2) Desplaçament fins a la columna --------
+    ; ---- 2) Desplaçament fins a la columna (version millorada) ----
+
+    ; suposem que R5 conté l’ASCII de la columna ('1'..'3')
+    MOV    R2, R5        ; R2 ← ASCII de columna
+    MOVH   R1, 00h
+    MOVL   R1, 30h       ; R1 ← 0x30
+    SUB    R2, R2, R1    ; R2 ← R2 - R1 = columna_num (1..3)
+    DEC    R2            ; R2 = columna_num - 1 (0..2)
+
+   ; ara R2 = columna-1 (0..2)
+    col_loop_P2:
+
+        BRZ   col_done_P2  ; si R2==0 hem avançat prou
+        INC   R6           ; passem a la següent cel·la
+        DEC   R2           ; R2--
+        BRNZ  col_loop_P2  ; mentre R2≠0 seguim
+    col_done_P2:
+
+        ; -------- 3) Comprovació i escriptura d'un 1 ja que es el jugador 1 qui ha marcat -------
+    ; -------- 3) COMPROVACIÓ I ESCRIPTURA DE LA MARCA --------
+    
+        ; 3.1) Carregar 0 a R1
+        MOVL   R1, 0          ; ara R1 = 0
+
+        ; 3.2) Llegir contingut de la casella
+        MOV    R3, [R6]       ; R3 = valor memòria
+
+        ; 3.3) Comparar amb 0
+        COMP   R3, R1         ; R3–R1
+        BRNZ   casella_ocupada2 ; si R3≠0 → ocupada
+
+        ; 3.4) Si som aquí, la casella està lliure
+        MOVL   R1, 2          ; R1 = 1
+        MOV    [R6], R1       ; escrivim la marca del jugador
+
+        CALL   pintar_o
+        CALL   torn_jug1_tramp       ; passem al següent torn
+
+
+
+
+
+
 pintar_o:
         PUSH    R0
         PUSH    R1
@@ -500,6 +615,7 @@ pintar_o:
         MOVH    R1, BYTEALTO DIRECCION tauler_o
         MOVL    R1, BYTEBAJO DIRECCION tauler_o
         CALL    print_o
+        
 
         ;--- 6) Restaurar registres i tornar ---
         POP     R6
@@ -518,6 +634,7 @@ casella_ocupada2:
     MOVH    R1, BYTEALTO DIRECCION casella_ocupada_txt
     MOVL    R1, BYTEBAJO DIRECCION casella_ocupada_txt
     CALL    print_string2
+    JMP    tornJug2
 
 read_teclat2:
     PUSH    R1              ; salvar R1
@@ -561,99 +678,7 @@ got_key2:
 
 
 
-tornJug2:
-    PUSH    R0
-    PUSH    R1
-    PUSH    R2
 
-    ; pinta prompt
-    MOVH    R0, BYTEALTO PANTALLA
-    MOVL    R0, BYTEBAJO PANTALLA
-    MOVH    R2, 00h
-    MOVL    R2, 00h
-    ADD     R0, R0, R2
-    MOVH    R1, BYTEALTO DIRECCION tornJugador2
-    MOVL    R1, BYTEBAJO DIRECCION tornJugador2
-    CALL    print_string2
-
-    ; demana columna
-    MOVH    R0, BYTEALTO PANTALLA
-    MOVL    R0, BYTEBAJO PANTALLA
-    MOVH    R2, 00h
-    MOVL    R2, 10h
-    ADD     R0, R0, R2
-    MOVH    R1, BYTEALTO DIRECCION selectColumn
-    MOVL    R1, BYTEBAJO DIRECCION selectColumn
-    CALL    print_string2
-    CALL    read_teclat2       ; retorna ASCII a R2
-    MOV     R5, R2           ; columna ASCII
-
-    ; demana fila
-    MOVH    R0, BYTEALTO PANTALLA
-    MOVL    R0, BYTEBAJO PANTALLA
-    MOVH    R2, 00h
-    MOVL    R2, 10h
-    ADD     R0, R0, R2
-    MOVH    R1, BYTEALTO DIRECCION selectFila
-    MOVL    R1, BYTEBAJO DIRECCION selectFila
-    CALL    print_string2
-    CALL    read_teclat2       ; retorna ASCII a R2
-    MOV     R4, R2           ; fila ASCII
-
-    ; comprovar si la columna i fila són vàlides, estan ocupades o no 
-
-
-;fila1       VALOR   0, 0, 0
-;fila2       VALOR   0, 0, 0
-;fila3       VALOR   0, 0, 0
-
-        MOVL  R1, '1'                 ; R1 ← 1
-        COMP  R4, R1                ; compara R4 amb 1 :contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
-        BRNZ   p2_base_fila1            ; si R4=1, salta a p2_base_fila1
-        MOVL  R1, '2'                 ; R1 ← 2
-        COMP  R4, R1                ; compara R4 amb 2
-        BRNZ   p2_base_fila2            ; si R4=2, salta a p2_base_fila2
-
-p2_base_fila3:
-        MOVH  R6, BYTEALTO DIRECCION fila3
-        MOVL  R6, BYTEBAJO DIRECCION fila3
-        JMP   after_p2_base
-p2_base_fila1:
-        MOVH  R6, BYTEALTO DIRECCION fila1
-        MOVL  R6, BYTEBAJO DIRECCION fila1
-        JMP   after_p2_base
-p2_base_fila2:
-        MOVH  R6, BYTEALTO DIRECCION fila2
-        MOVL  R6, BYTEBAJO DIRECCION fila2
-after_p2_base:
-
-        ; -------- 2) Desplaçament fins a la columna --------
-        MOV   R2, R5                ; R2 ← número de columna
-        DEC   R2                    ; R2 ← R2 - 1 (0..2) :contentReference[oaicite:4]{index=4}:contentReference[oaicite:5]{index=5}
-col_loop_p2:
-        COMP  R2, R0                ; compara R2 amb 0
-        BRZ   col_done_p2              ; si R2=0, hem avançat prou
-        INC   R6                    ; R6 = R6 + 1 (punter a la següent cel·la) :contentReference[oaicite:6]{index=6}:contentReference[oaicite:7]{index=7}
-        DEC   R2                    ; R2 = R2 - 1
-        BRNZ  col_loop_p2              ; repeteix mentre R2 ≠ 0
-col_done_p2:
-
-        ; -------- 3) Comprovació i escriptura de la X --------
-        MOV   R3, [R6]              ; R3 ← contingut actual de la cel·la :contentReference[oaicite:8]{index=8}:contentReference[oaicite:9]{index=9}
-        COMP  R3, R0                ; compara amb 0
-        BRZ  casella_ocupada2         ; si no és zero, ja està ocupada
-
-        MOVL  R1, 1               ; R1 ← codi ASCII de 'X' (o un valor 1 si ho prefereixes)
-        MOV   [R6], R1              ; escriu la 'X' a memòria :contentReference[oaicite:10]{index=10}:contentReference[oaicite:11]{index=11}
-        
-  
-        ; -------- 4) Pintar la X a pantalla --------
-        call   pintar_o
-
-    POP     R1
-    POP     R2
-    POP     R0
-    RET
 
 
 FIN
